@@ -19,12 +19,12 @@ public class Placeholder: UIView {
     private var appearance = Appearance()
     private var items: [Placeholder.Element] = []
 
-    /// 顶部对齐约束
-    private var stackTopConstraint: NSLayoutConstraint!
-    /// 中心对齐约束
-    private var stackCenterConstraint: NSLayoutConstraint!
-    /// 底部对齐约束
-    private var stackBottomConstraint: NSLayoutConstraint!
+    /// 顶部弹性 spacer（用于 center/bottom 对齐时撑开上方空间）
+    private let topSpacer = UIView()
+    /// 底部弹性 spacer（用于 top/center 对齐时撑开下方空间）
+    private let bottomSpacer = UIView()
+    /// center 模式下 topSpacer 与 bottomSpacer 等高约束
+    private var spacerEqualHeightConstraint: NSLayoutConstraint?
     
     // MARK: - 初始化
     public init() {
@@ -69,18 +69,16 @@ extension Placeholder {
         addSubview(stackView)
         stackView.translatesAutoresizingMaskIntoConstraints = false
         
-        // 垂直对齐约束
-        stackTopConstraint = stackView.topAnchor.constraint(equalTo: topAnchor)
-        stackCenterConstraint = stackView.centerYAnchor.constraint(equalTo: centerYAnchor)
-        stackBottomConstraint = stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        // 弹性 spacer 配置：无 intrinsic size，用于撑开空间
+        topSpacer.translatesAutoresizingMaskIntoConstraints = false
+        bottomSpacer.translatesAutoresizingMaskIntoConstraints = false
         
-        // 默认居中
-        stackCenterConstraint.isActive = true
-        
-        // 水平固定
+        // stackView 始终填满父视图，通过内部 spacer 控制内容垂直位置
         NSLayoutConstraint.activate([
+            stackView.topAnchor.constraint(equalTo: topAnchor),
             stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: trailingAnchor)
+            stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
     }
     
@@ -89,25 +87,42 @@ extension Placeholder {
         stackView.alignment = .center
         stackView.layoutMargins = appearance.padding
         stackView.isLayoutMarginsRelativeArrangement = true
+        updateSpacerConstraints()
+    }
+    
+    /// 根据 verticalAlignment 更新 topSpacer / bottomSpacer 的约束
+    private func updateSpacerConstraints() {
+        // 仅在 spacer 已加入 stackView 后更新，否则约束会因 no common ancestor 崩溃
+        guard topSpacer.superview != nil, bottomSpacer.superview != nil else { return }
         
-        // 更新垂直对齐
-        stackTopConstraint.isActive = false
-        stackCenterConstraint.isActive = false
-        stackBottomConstraint.isActive = false
+        spacerEqualHeightConstraint?.isActive = false
+        spacerEqualHeightConstraint = nil
         
-        switch appearance.verticalAlignment {
+        // 移除可能存在的固定高度约束
+        topSpacer.constraints.forEach { $0.isActive = false }
+        bottomSpacer.constraints.forEach { $0.isActive = false }
+        
+        switch appearance.alignment {
         case .top:
-            stackTopConstraint.isActive = true
+            topSpacer.heightAnchor.constraint(equalToConstant: 0).isActive = true
+            // bottomSpacer 无高度约束，自动撑开剩余空间
         case .center:
-            stackCenterConstraint.isActive = true
+            spacerEqualHeightConstraint = topSpacer.heightAnchor.constraint(equalTo: bottomSpacer.heightAnchor)
+            spacerEqualHeightConstraint?.isActive = true
+            // 两个 spacer 等高，平分上下空间
         case .bottom:
-            stackBottomConstraint.isActive = true
+            bottomSpacer.heightAnchor.constraint(equalToConstant: 0).isActive = true
+            // topSpacer 无高度约束，自动撑开剩余空间
         }
     }
     
     // MARK: - 渲染内容
     private func renderItems() {
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        
+        // 顶部 spacer（用于 center/bottom 对齐时撑开上方空间）
+        stackView.addArrangedSubview(topSpacer)
+        
         var lastWasSpacer = true
         var view: UIView
 
@@ -206,8 +221,8 @@ extension Placeholder {
             stackView.addArrangedSubview(view)
         }
         
-        // 底部自适应空白（可选）
-        let bottomSpacer = UIView()
+        // 底部 spacer（用于 top/center 对齐时撑开下方空间）
         stackView.addArrangedSubview(bottomSpacer)
+        updateSpacerConstraints()
     }
 }

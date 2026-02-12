@@ -104,11 +104,12 @@ extension Placeholder {
         public var padding: UIEdgeInsets = .init(top: 100, left: 50, bottom: 50, right: 50)
        
         /// 垂直对齐方式
-        public var verticalAlignment: VerticalAlignment = .top
+        public var alignment: VerticalAlignment = .top
     }
     
     // MARK: - 垂直布局枚举
-    /// 用于控制 ListPlaceholder 中内容的垂直对齐方式
+    /// 用于控制占位视图中内容的垂直对齐方式
+    /// 完整类型为 Placeholder.VerticalAlignment，与 SwiftUI.VerticalAlignment 通过命名空间区分
     public enum VerticalAlignment {
         /// 内容靠上
         case top

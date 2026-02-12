@@ -20,11 +20,11 @@ class ViewController: UIViewController {
 
     lazy var placeholder: Placeholder = {
         
-        let width = view.bounds.size.width
+        let width = view.bounds.size.width * 0.8
         
         let v = Placeholder()
             .appearance {
-                $0.verticalAlignment = .center   // 垂直靠下
+                $0.alignment = .top
                 $0.padding = .zero
             }
             .items {
