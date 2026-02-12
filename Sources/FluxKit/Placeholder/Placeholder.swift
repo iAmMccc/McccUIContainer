@@ -7,70 +7,47 @@
 
 import Foundation
 import UIKit
-// MARK: - Item Enum
-public enum ListPlaceholderItem {
-    case spacer(CGFloat)
-    case image(UIImage?,  CGSize? = nil, configure: ((UIImageView) -> Void)? = nil)
-    case title(String,    CGSize? = nil, configure: ((UILabel) -> Void)? = nil)
-    case subTitle(String, CGSize? = nil, configure: ((UILabel) -> Void)? = nil)
-    case button(String,   CGSize? = nil, action: (() -> Void)? = nil, configure: ((UIButton) -> Void)? = nil)
-    case subButton(String,CGSize? = nil, action: (() -> Void)? = nil, configure: ((UIButton) -> Void)? = nil)
+
+// MARK: - 垂直布局枚举
+/// 用于控制 ListPlaceholder 中内容的垂直对齐方式
+public enum PlaceholderVerticalAlignment {
+    /// 内容靠上
+    case top
+    /// 内容垂直居中
+    case center
+    /// 内容靠下
+    case bottom
 }
 
-// MARK: - 全局默认配置，可外部修改
-public struct ListPlaceholderDefaults {
-    public static var buttonConfigure: ((UIButton) -> Void) = { btn in
-        btn.backgroundColor = .systemBlue
-        btn.layer.cornerRadius = 8
-        btn.setTitleColor(.white, for: .normal)
-        btn.titleLabel?.font = .systemFont(ofSize: 16)
-    }
-    
-    public static var subButtonConfigure: ((UIButton) -> Void) = { btn in
-        btn.backgroundColor = .lightGray
-        btn.layer.cornerRadius = 6
-        btn.setTitleColor(.white, for: .normal)
-        btn.titleLabel?.font = .systemFont(ofSize: 14)
-    }
-    
-    public static var imageConfigure: ((UIImageView) -> Void) = { iv in
-        iv.contentMode = .scaleAspectFit
-    }
-    
-    public static var titleConfigure: ((UILabel) -> Void) = { lbl in
-        lbl.font = .systemFont(ofSize: 16)
-        lbl.textColor = .black
-        lbl.textAlignment = .center
-        lbl.numberOfLines = 0
-    }
-    
-    public static var subTitleConfigure: ((UILabel) -> Void) = { lbl in
-        lbl.font = .systemFont(ofSize: 14)
-        lbl.textColor = .gray
-        lbl.textAlignment = .center
-        lbl.numberOfLines = 0
-    }
-    
-    // ✅ 全局默认尺寸
-    public static var buttonSize: CGSize = CGSize(width: 184, height: 40)
-    public static var subButtonSize: CGSize = CGSize(width: 140, height: 36)
-    public static var imageSize: CGSize  = CGSize(width: 250, height: 180)
-}
-
-// MARK: - 全局 Stack 配置
-public struct ListPlaceholderConfig {
+// MARK: - ListPlaceholder 配置
+/// 配置 ListPlaceholder 的全局样式和布局
+public struct PlaceholderConfig {
+    /// 背景颜色
     public var backgroundColor: UIColor = .clear
+    /// 内边距（padding）
     public var padding: UIEdgeInsets = .init(top: 100, left: 50, bottom: 50, right: 50)
-    public var alignment: UIStackView.Alignment = .center
+    /// 垂直对齐方式
+    public var verticalAlignment: PlaceholderVerticalAlignment = .center
 }
 
 // MARK: - ListPlaceholder 主体
-public final class ListPlaceholder: UIView {
+/// 可自定义内容、布局和样式的占位视图
+/// 支持 image / title / subtitle / button / subButton
+public final class Placeholder: UIView {
     
+    // MARK: - 内部属性
     private let stackView = UIStackView()
-    private var config = ListPlaceholderConfig()
-    private var items: [ListPlaceholderItem] = []
+    private var config = PlaceholderConfig()
+    private var items: [Placeholder.Element] = []
+
+    /// 顶部对齐约束
+    private var stackTopConstraint: NSLayoutConstraint!
+    /// 中心对齐约束
+    private var stackCenterConstraint: NSLayoutConstraint!
+    /// 底部对齐约束
+    private var stackBottomConstraint: NSLayoutConstraint!
     
+    // MARK: - 初始化
     public init() {
         super.init(frame: .zero)
         setupStackView()
@@ -79,33 +56,48 @@ public final class ListPlaceholder: UIView {
     
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     
+    // MARK: - 配置方法
+    /// 配置 ListPlaceholder 样式
+    /// - Parameter build: 配置闭包
+    /// - Returns: self，支持链式调用
     @discardableResult
-    public func config(_ build: (inout ListPlaceholderConfig) -> Void) -> Self {
+    public func config(_ build: (inout PlaceholderConfig) -> Void) -> Self {
         build(&config)
         applyConfig()
         return self
     }
     
+    /// 配置 ListPlaceholder 内容
+    /// - Parameter build: Builder 闭包
+    /// - Returns: self，支持链式调用
     @discardableResult
-    public func items(_ build: (ListPlaceholderBuilder) -> Void) -> Self {
-        let builder = ListPlaceholderBuilder()
+    public func items(_ build: (PlaceholderBuilder) -> Void) -> Self {
+        let builder = PlaceholderBuilder()
         build(builder)
-        self.items = builder.items
+        self.items = builder.elements
         renderItems()
         return self
     }
     
-    // MARK: - UI Setup
+    // MARK: - StackView 布局
     private func setupStackView() {
         stackView.axis = .vertical
-        stackView.alignment = config.alignment
+        stackView.alignment = .center
         stackView.spacing = 0
         stackView.distribution = .fill
         addSubview(stackView)
         stackView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // 垂直对齐约束
+        stackTopConstraint = stackView.topAnchor.constraint(equalTo: topAnchor)
+        stackCenterConstraint = stackView.centerYAnchor.constraint(equalTo: centerYAnchor)
+        stackBottomConstraint = stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        
+        // 默认居中
+        stackCenterConstraint.isActive = true
+        
+        // 水平固定
         NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: topAnchor),
-            stackView.bottomAnchor.constraint(equalTo: bottomAnchor),
             stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
@@ -113,19 +105,33 @@ public final class ListPlaceholder: UIView {
     
     private func applyConfig() {
         backgroundColor = config.backgroundColor
-        stackView.alignment = config.alignment
+        stackView.alignment = .center
         stackView.layoutMargins = config.padding
         stackView.isLayoutMarginsRelativeArrangement = true
+        
+        // 更新垂直对齐
+        stackTopConstraint.isActive = false
+        stackCenterConstraint.isActive = false
+        stackBottomConstraint.isActive = false
+        
+        switch config.verticalAlignment {
+        case .top:
+            stackTopConstraint.isActive = true
+        case .center:
+            stackCenterConstraint.isActive = true
+        case .bottom:
+            stackBottomConstraint.isActive = true
+        }
     }
     
+    // MARK: - 渲染内容
     private func renderItems() {
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         var lastWasSpacer = true
         var view: UIView
 
         for item in items {
-            
-            // 自动添加默认间距
+            // 默认间距
             if !lastWasSpacer {
                 let defaultSpacer = UIView()
                 defaultSpacer.translatesAutoresizingMaskIntoConstraints = false
@@ -134,23 +140,33 @@ public final class ListPlaceholder: UIView {
             }
             
             switch item {
-            case .spacer(let h):
-                let v = UIView()
-                v.translatesAutoresizingMaskIntoConstraints = false
-                v.heightAnchor.constraint(equalToConstant: h).isActive = true
-                view = v
+            case .spacer(let height):
+                let spacer = UIView()
+                spacer.translatesAutoresizingMaskIntoConstraints = false
+                spacer.heightAnchor.constraint(equalToConstant: height).isActive = true
+                view = spacer
                 lastWasSpacer = true
                 
-            case .image(let img, let size, let configure):
-                let iv = UIImageView(image: img)
-                let size = size ?? ListPlaceholderDefaults.imageSize
+            case .image(let image, let size, let configure):
+                let iv = UIImageView(image: image)
+                let size = size ?? Placeholder.GlobalStyle.imageSize
                 iv.translatesAutoresizingMaskIntoConstraints = false
-                iv.heightAnchor.constraint(equalToConstant: size.height).isActive = true
-                iv.widthAnchor.constraint(lessThanOrEqualToConstant: size.width).isActive = true
-                iv.setContentHuggingPriority(.required, for: .horizontal)
-                iv.setContentCompressionResistancePriority(.required, for: .horizontal)
-                (configure ?? ListPlaceholderDefaults.imageConfigure)(iv)
-                view = iv
+                (configure ?? Placeholder.GlobalStyle.imageStyle)(iv)
+                
+                // 容器包裹，保证宽高固定
+                let container = UIView()
+                container.translatesAutoresizingMaskIntoConstraints = false
+                container.addSubview(iv)
+                
+                NSLayoutConstraint.activate([
+                    iv.widthAnchor.constraint(equalToConstant: size.width),
+                    iv.heightAnchor.constraint(equalToConstant: size.height),
+                    iv.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+                    iv.topAnchor.constraint(equalTo: container.topAnchor),
+                    iv.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+                ])
+                
+                view = container
                 lastWasSpacer = false
                 
             case .title(let text, let size, let configure):
@@ -161,11 +177,11 @@ public final class ListPlaceholder: UIView {
                     lbl.widthAnchor.constraint(equalToConstant: size.width).isActive = true
                     lbl.heightAnchor.constraint(equalToConstant: size.height).isActive = true
                 }
-                (configure ?? ListPlaceholderDefaults.titleConfigure)(lbl)
+                (configure ?? Placeholder.GlobalStyle.titleStyle)(lbl)
                 view = lbl
                 lastWasSpacer = false
                 
-            case .subTitle(let text, let size, let configure):
+            case .secondaryTitle(let text, let size, let configure):
                 let lbl = UILabel()
                 lbl.text = text
                 if let size = size {
@@ -173,32 +189,32 @@ public final class ListPlaceholder: UIView {
                     lbl.widthAnchor.constraint(equalToConstant: size.width).isActive = true
                     lbl.heightAnchor.constraint(equalToConstant: size.height).isActive = true
                 }
-                (configure ?? ListPlaceholderDefaults.subTitleConfigure)(lbl)
+                (configure ?? Placeholder.GlobalStyle.subtitleStyle)(lbl)
                 view = lbl
                 lastWasSpacer = false
                 
             case .button(let title, let size, let action, let configure):
                 let btn = UIButton(type: .system)
                 btn.setTitle(title, for: .normal)
-                let size = size ?? ListPlaceholderDefaults.buttonSize
+                let size = size ?? Placeholder.GlobalStyle.primaryButtonSize
                 btn.translatesAutoresizingMaskIntoConstraints = false
                 btn.widthAnchor.constraint(equalToConstant: size.width).isActive = true
                 btn.heightAnchor.constraint(equalToConstant: size.height).isActive = true
-                (configure ?? ListPlaceholderDefaults.buttonConfigure)(btn)
+                (configure ?? Placeholder.GlobalStyle.primaryButtonStyle)(btn)
                 if let action = action {
                     btn.addAction(UIAction { _ in action() }, for: .touchUpInside)
                 }
                 view = btn
                 lastWasSpacer = false
                 
-            case .subButton(let title, let size, let action, let configure):
+            case .secondaryButton(let title, let size, let action, let configure):
                 let btn = UIButton(type: .system)
                 btn.setTitle(title, for: .normal)
-                let size = size ?? ListPlaceholderDefaults.subButtonSize
+                let size = size ?? Placeholder.GlobalStyle.secondaryButtonSize
                 btn.translatesAutoresizingMaskIntoConstraints = false
                 btn.widthAnchor.constraint(equalToConstant: size.width).isActive = true
                 btn.heightAnchor.constraint(equalToConstant: size.height).isActive = true
-                (configure ?? ListPlaceholderDefaults.subButtonConfigure)(btn)
+                (configure ?? Placeholder.GlobalStyle.secondaryButtonStyle)(btn)
                 if let action = action {
                     btn.addAction(UIAction { _ in action() }, for: .touchUpInside)
                 }
@@ -209,49 +225,8 @@ public final class ListPlaceholder: UIView {
             stackView.addArrangedSubview(view)
         }
         
-        // 底部自适应空白
+        // 底部自适应空白（可选）
         let bottomSpacer = UIView()
         stackView.addArrangedSubview(bottomSpacer)
-    }
-}
-
-// MARK: - Builder
-public final class ListPlaceholderBuilder {
-    fileprivate var items: [ListPlaceholderItem] = []
-    
-    @discardableResult
-    public func spacer(_ height: CGFloat) -> Self {
-        items.append(.spacer(height))
-        return self
-    }
-    
-    @discardableResult
-    public func image(_ image: UIImage?, size: CGSize? = nil, configure: ((UIImageView) -> Void)? = nil) -> Self {
-        items.append(.image(image, size, configure: configure))
-        return self
-    }
-    
-    @discardableResult
-    public func title(_ text: String, size: CGSize? = nil, configure: ((UILabel) -> Void)? = nil) -> Self {
-        items.append(.title(text, size, configure: configure))
-        return self
-    }
-    
-    @discardableResult
-    public func subTitle(_ text: String, size: CGSize? = nil, configure: ((UILabel) -> Void)? = nil) -> Self {
-        items.append(.subTitle(text, size, configure: configure))
-        return self
-    }
-    
-    @discardableResult
-    public func button(_ title: String, size: CGSize? = nil, configure: ((UIButton) -> Void)? = nil, action: (() -> Void)? = nil) -> Self {
-        items.append(.button(title, size, action: action, configure: configure))
-        return self
-    }
-    
-    @discardableResult
-    public func subButton(_ title: String, size: CGSize? = nil, configure: ((UIButton) -> Void)? = nil, action: (() -> Void)? = nil) -> Self {
-        items.append(.subButton(title, size, action: action, configure: configure))
-        return self
     }
 }
