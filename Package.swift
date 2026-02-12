@@ -1,26 +1,56 @@
-// swift-tools-version: 6.2
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
+// swift-tools-version:5.7
 import PackageDescription
 
 let package = Package(
-    name: "McccUIContainer",
+    name: "FluxKit",
+    platforms: [
+        .iOS(.v15)
+    ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
+        // 顶层库，组合所有对外模块
         .library(
-            name: "McccUIContainer",
-            targets: ["McccUIContainer"]
+            name: "FluxKit",
+            targets: ["FluxKit"]
+        ),
+        
+        // 单独暴露的子库
+        .library(
+            name: "Placeholder",
+            targets: ["Placeholder"]
+        ),
+        .library(
+            name: "FluxNamespace",
+            targets: ["FluxNamespace"]
         ),
     ],
+    
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
+        
+        // 顶层库，组合子库
         .target(
-            name: "McccUIContainer"
+            name: "FluxKit",
+            dependencies: ["Placeholder", "FluxNamespace"],
+            path: "Sources/FluxKit/FluxKit" // 可以放一个空的模块文件夹，只做组合
         ),
+        
+        
+        // 内部子库
+        .target(
+            name: "FluxNamespace",
+            path: "Sources/FluxKit/Namespace"
+        ),
+        .target(
+            name: "Placeholder",
+            dependencies: ["FluxNamespace"], // 如果 Placeholder 依赖 FluxNamespace
+            path: "Sources/FluxKit/Placeholder"
+        ),
+        
+
+        
+        // 测试模块
         .testTarget(
-            name: "McccUIContainerTests",
-            dependencies: ["McccUIContainer"]
-        ),
+            name: "FluxKitTests",
+            dependencies: ["Placeholder", "FluxNamespace", "FluxKit"]
+        )
     ]
 )
