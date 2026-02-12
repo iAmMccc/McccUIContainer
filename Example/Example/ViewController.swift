@@ -23,8 +23,8 @@ class ViewController: UIViewController {
         let width = view.bounds.size.width
         
         let v = Placeholder()
-            .config {
-                $0.verticalAlignment = .top   // 垂直靠下
+            .appearance {
+                $0.verticalAlignment = .center   // 垂直靠下
                 $0.padding = .zero
             }
             .items {

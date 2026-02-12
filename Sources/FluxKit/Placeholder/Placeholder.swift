@@ -8,36 +8,15 @@
 import Foundation
 import UIKit
 
-// MARK: - 垂直布局枚举
-/// 用于控制 ListPlaceholder 中内容的垂直对齐方式
-public enum PlaceholderVerticalAlignment {
-    /// 内容靠上
-    case top
-    /// 内容垂直居中
-    case center
-    /// 内容靠下
-    case bottom
-}
-
-// MARK: - ListPlaceholder 配置
-/// 配置 ListPlaceholder 的全局样式和布局
-public struct PlaceholderConfig {
-    /// 背景颜色
-    public var backgroundColor: UIColor = .clear
-    /// 内边距（padding）
-    public var padding: UIEdgeInsets = .init(top: 100, left: 50, bottom: 50, right: 50)
-    /// 垂直对齐方式
-    public var verticalAlignment: PlaceholderVerticalAlignment = .center
-}
 
 // MARK: - ListPlaceholder 主体
 /// 可自定义内容、布局和样式的占位视图
 /// 支持 image / title / subtitle / button / subButton
-public final class Placeholder: UIView {
+public class Placeholder: UIView {
     
     // MARK: - 内部属性
     private let stackView = UIStackView()
-    private var config = PlaceholderConfig()
+    private var appearance = Appearance()
     private var items: [Placeholder.Element] = []
 
     /// 顶部对齐约束
@@ -61,8 +40,8 @@ public final class Placeholder: UIView {
     /// - Parameter build: 配置闭包
     /// - Returns: self，支持链式调用
     @discardableResult
-    public func config(_ build: (inout PlaceholderConfig) -> Void) -> Self {
-        build(&config)
+    public func appearance(_ build: (inout Appearance) -> Void) -> Self {
+        build(&appearance)
         applyConfig()
         return self
     }
@@ -78,7 +57,9 @@ public final class Placeholder: UIView {
         renderItems()
         return self
     }
-    
+}
+
+extension Placeholder {
     // MARK: - StackView 布局
     private func setupStackView() {
         stackView.axis = .vertical
@@ -104,9 +85,9 @@ public final class Placeholder: UIView {
     }
     
     private func applyConfig() {
-        backgroundColor = config.backgroundColor
+        backgroundColor = appearance.backgroundColor
         stackView.alignment = .center
-        stackView.layoutMargins = config.padding
+        stackView.layoutMargins = appearance.padding
         stackView.isLayoutMarginsRelativeArrangement = true
         
         // 更新垂直对齐
@@ -114,7 +95,7 @@ public final class Placeholder: UIView {
         stackCenterConstraint.isActive = false
         stackBottomConstraint.isActive = false
         
-        switch config.verticalAlignment {
+        switch appearance.verticalAlignment {
         case .top:
             stackTopConstraint.isActive = true
         case .center:
@@ -149,7 +130,7 @@ public final class Placeholder: UIView {
                 
             case .image(let image, let size, let configure):
                 let iv = UIImageView(image: image)
-                let size = size ?? Placeholder.GlobalStyle.imageSize
+                let size = size ?? Placeholder.GlobalStyle.appearance.imageSize
                 iv.translatesAutoresizingMaskIntoConstraints = false
                 (configure ?? Placeholder.GlobalStyle.imageStyle)(iv)
                 
@@ -196,7 +177,7 @@ public final class Placeholder: UIView {
             case .button(let title, let size, let action, let configure):
                 let btn = UIButton(type: .system)
                 btn.setTitle(title, for: .normal)
-                let size = size ?? Placeholder.GlobalStyle.primaryButtonSize
+                let size = size ?? Placeholder.GlobalStyle.appearance.primaryButtonSize
                 btn.translatesAutoresizingMaskIntoConstraints = false
                 btn.widthAnchor.constraint(equalToConstant: size.width).isActive = true
                 btn.heightAnchor.constraint(equalToConstant: size.height).isActive = true
@@ -210,7 +191,7 @@ public final class Placeholder: UIView {
             case .secondaryButton(let title, let size, let action, let configure):
                 let btn = UIButton(type: .system)
                 btn.setTitle(title, for: .normal)
-                let size = size ?? Placeholder.GlobalStyle.secondaryButtonSize
+                let size = size ?? Placeholder.GlobalStyle.appearance.secondaryButtonSize
                 btn.translatesAutoresizingMaskIntoConstraints = false
                 btn.widthAnchor.constraint(equalToConstant: size.width).isActive = true
                 btn.heightAnchor.constraint(equalToConstant: size.height).isActive = true

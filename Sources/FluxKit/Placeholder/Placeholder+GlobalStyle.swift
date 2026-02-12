@@ -13,8 +13,10 @@ extension Placeholder {
     /// 可以外部修改来自定义样式
     public struct GlobalStyle {
         
-        // MARK: - 按钮样式
         
+        /// 默认外观
+        public static var appearance = Appearance()
+                
         /// 默认主按钮样式（primary button）
         /// - 背景色：蓝色
         /// - 圆角：8
@@ -76,25 +78,43 @@ extension Placeholder {
             lbl.numberOfLines = 0
         }
         
-        // MARK: - 默认尺寸
         
+        
+
+    }
+}
+
+
+extension Placeholder {
+    public struct Appearance {
         /// 默认主按钮尺寸
-        public static var primaryButtonSize: CGSize = CGSize(width: 184, height: 40)
+        public var primaryButtonSize: CGSize = CGSize(width: 184, height: 40)
         
         /// 默认次按钮尺寸
-        public static var secondaryButtonSize: CGSize = CGSize(width: 140, height: 36)
+        public var secondaryButtonSize: CGSize = CGSize(width: 140, height: 36)
         
         /// 默认图片尺寸
-        public static var imageSize: CGSize  = CGSize(width: 250, height: 180)
+        public var imageSize: CGSize  = CGSize(width: 250, height: 180)
         
         
         /// 背景颜色
-        public static var backgroundColor: UIColor = .clear
+        public var backgroundColor: UIColor = .clear
         
         /// 内边距（padding）
-        public static var padding: UIEdgeInsets = .init(top: 100, left: 50, bottom: 50, right: 50)
+        public var padding: UIEdgeInsets = .init(top: 100, left: 50, bottom: 50, right: 50)
        
         /// 垂直对齐方式
-        public static var verticalAlignment: PlaceholderVerticalAlignment = .top
+        public var verticalAlignment: VerticalAlignment = .top
+    }
+    
+    // MARK: - 垂直布局枚举
+    /// 用于控制 ListPlaceholder 中内容的垂直对齐方式
+    public enum VerticalAlignment {
+        /// 内容靠上
+        case top
+        /// 内容垂直居中
+        case center
+        /// 内容靠下
+        case bottom
     }
 }
